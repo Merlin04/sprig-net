@@ -1,4 +1,0 @@
-/home/me/code/sprig-net/cmake-build-debug/CMakeFiles/fakestd.dir
-/home/me/code/sprig-net/cmake-build-debug/CMakeFiles/sprig_net.dir
-/home/me/code/sprig-net/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/me/code/sprig-net/cmake-build-debug/CMakeFiles/rebuild_cache.dir
