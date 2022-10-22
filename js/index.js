@@ -24,7 +24,7 @@ function new_game_desc() {
 
 console.log(new_game_desc());
 
-const {
+/*const {
     test,
     test2,
     test3
@@ -32,34 +32,43 @@ const {
     get(obj) {
         return String.fromCharCode(obj._l++);
     }
-});
+});*/
 
+// TODO: generate rotated sprites, make sprites 16x16 (not that bad looking), create wrapper around sprig for easy rendering (like vdom)
 
 const makeSprite = (n, active) => {
     // console.log("-----------------------------------------");
     // console.log(n, active);
-    const t = Array.from({ length: 15 }, () => Array(15).fill(".")); // t[y][x]
+    const t = Array.from({ length: 16 }, () => Array(16).fill(".")); // t[y][x]
     // only used for straight lines
     const drawLine = (dirX, dirY, thick) => {
         const fill = thick ? "0" : "7";
         const isNeg = (dirX < 0 || dirY < 0);
-        for(let i = thick ? (isNeg ? 8 : 6) : 7; isNeg ? i >= 0 : i < 15; isNeg ? i-- : i++) {
-            const y = dirX !== 0 ? 7 : i;
-            const x = dirX !== 0 ? i : 7;
-            const uy = dirX !== 0 ? y - 1 : y;
-            const ux = dirX !== 0 ? x : x - 1;
-            const ly = dirX !== 0 ? y + 1 : y;
-            const lx = dirX !== 0 ? x : x + 1;
-            thick && t[uy][ux] !== "7" && (t[uy][ux] = fill);
-            t[uy][ux] !== "7" && (t[y][x] = fill);
-            thick && t[ly][lx] !== "7" && (t[ly][lx] = fill);
+        for(let i = thick ? (isNeg ? 9 : 6) : (isNeg ? 8 : 7); isNeg ? i >= 0 : i < 16; isNeg ? i-- : i++) {
+            const y1 = dirX !== 0 ? 7 : i;
+            const x1 = dirX !== 0 ? i : 7;
+            const y2 = dirX !== 0 ? 8 : i;
+            const x2 = dirX !== 0 ? i : 8;
+
+            const fillP = (x, y) => t[y][x] !== "7" && (t[y][x] = fill);
+            fillP(x1, y1);
+            fillP(x2, y2);
+
+            if(thick) {
+                const uy = dirX !== 0 ? y1 - 1 : y1;
+                const ux = dirX !== 0 ? x1 : x1 - 1;
+                const ly = dirX !== 0 ? y2 + 1 : y2;
+                const lx = dirX !== 0 ? x2 : x2 + 1;
+                fillP(ux, uy);
+                fillP(lx, ly);
+            }
         }
         // console.log(dirX, dirY, thick);
         // console.log(d());
     };
     const drawCenterBox = (r, fill) => {
-        for(let y = 7 - r; y <= 7 + r; y++) {
-            for(let x = 7 - r; x <= 7 + r; x++) {
+        for(let y = 8 - r; y <= 7 + r; y++) {
+            for(let x = 8 - r; x <= 7 + r; x++) {
                 t[y][x] = fill;
             }
         }
@@ -84,6 +93,41 @@ const makeSprite = (n, active) => {
     return d();
 };
 
+// rotate a sprite in increments of 90 degrees
+const rotateSpriteText = (sprite, deg) => {
+    const rotate90 = sprite => {
+        const s = sprite.split("\n");
+        return Array.from({ length: s.length }, (_, i) =>
+            Array.from({ length: s.length }, (_, j) => s[s.length - j - 1][i]).join("")
+        ).join("\n");
+        // return sprite
+        //     .split("\n")
+        //     .map((l, y) => l
+        //         .split("")
+        //         .map((c, x) => sprite.split("\n")[x][y])
+        //         .reverse()
+        //         .join("")
+        //     ).join("\n");
+    };
+    for(let i = 0; i < deg / 90; i++) {
+        sprite = rotate90(sprite);
+    }
+    return sprite;
+}
+
+const legend = [];
+const chars = new Map();
+const getChar = (n, active, deg = 0) => {
+    const key = `${n},${active},${deg}`;
+    if(chars.has(key)) return chars.get(key);
+    const sprite = rotateSpriteText(makeSprite(n, active), deg);
+    const char = String.fromCharCode(legend.length + "A".charCodeAt(0));
+    chars.set(key, char);
+    legend.push([char, sprite]);
+    setLegend(...legend);
+    return char;
+}
+/*
 const setTimes = (s, t) => s.flatMap(sE => t.map(tE => [sE, tE]));
 const getChar = (n, active) => String.fromCharCode(((n - 1) * 2) + active + "A".charCodeAt(0));
 const legend = setTimes([1, 2, 3, 4], [false, true])
@@ -92,7 +136,9 @@ const legend = setTimes([1, 2, 3, 4], [false, true])
         [String.fromCharCode(idx + "A".charCodeAt(0)), cur]
     ], []);
 console.log(legend);
-setLegend(...legend);
+setLegend(...legend);*/
+
+// setLegend(['a', makeSprite(1, false)]);
 
 /*
 const player = "p";
@@ -125,6 +171,8 @@ const levels = [
     map`
 ${getChar(3, true)}${getChar(2, false)}
 ${getChar(4, true)}${getChar(1, true)}
+${getChar(2, true, 0)}${getChar(2, true, 90)}
+${getChar(2, true, 180)}${getChar(2, true, 270)}
 `,
 ];
 
