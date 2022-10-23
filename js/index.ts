@@ -5,7 +5,19 @@
 
 import { malloc, new_game_desc as c_new_game_desc } from "../pub/main.min.mjs";
 
-function read_cstr(pt) {
+declare global {
+    var c_buffer: ArrayBuffer;
+    var HEAP8: Int8Array;
+    var HEAP16: Int16Array;
+    var HEAP32: Int32Array;
+    var HEAPU8: Uint8Array;
+    var HEAPU16: Uint16Array;
+    var HEAPU32: Uint32Array;
+    var HEAPF32: Float32Array;
+    var HEAPF64: Float64Array;
+}
+
+function read_cstr(pt: number) {
     let s = "";
     while (HEAPU8[pt] != 0) {
         s += String.fromCharCode(HEAPU8[pt++]);
@@ -24,19 +36,17 @@ function new_game_desc() {
 
 console.log(new_game_desc());
 
-/*const {
-    test,
-    test2,
-    test3
-}= new Proxy({ _l: "A".charCodeAt() }, {
-    get(obj) {
-        return String.fromCharCode(obj._l++);
-    }
-});*/
+// TODO: create wrapper around sprig for easy rendering (like vdom)
 
-// TODO: generate rotated sprites, make sprites 16x16 (not that bad looking), create wrapper around sprig for easy rendering (like vdom)
+enum TileType {
+    T1,
+    T2L,
+    T2S,
+    T3,
+    T4
+}
 
-const makeSprite = (n, active) => {
+const makeSprite = (type: TileType, active) => {
     // console.log("-----------------------------------------");
     // console.log(n, active);
     const t = Array.from({ length: 16 }, () => Array(16).fill(".")); // t[y][x]
@@ -75,19 +85,20 @@ const makeSprite = (n, active) => {
     };
     const d = () => t.reduce((acc, cur) => acc + "\n" + cur.join(""), "");
 
-    let coords = {
-        1: [[1, 0]]
+    let coords: Record<number, [number, number][]> = {
+        [TileType.T1]: [[1, 0]]
     };
-    coords[2] = [...coords[1], [0, 1]];
-    coords[3] = [...coords[2], [0, -1]];
-    coords[4] = [...coords[3], [-1, 0]];
+    coords[TileType.T2L] = [...coords[TileType.T1], [0, 1]];
+    coords[TileType.T2S] = [...coords[TileType.T1], [-1, 0]];
+    coords[TileType.T3] = [...coords[TileType.T2L], [-1, 0]];
+    coords[TileType.T4] = [...coords[TileType.T3], [0, 1]];
 
-    coords[n].forEach(c => (drawLine(...c, true), active && drawLine(...c, false)));
+    coords[type].forEach(c => (drawLine(...c, true), active && drawLine(...c, false)));
 
     // draw boxes
-    if(n === 1 || n === 4) {
+    if(type === TileType.T1 || type === TileType.T4) {
         drawCenterBox(5, "0");
-        if(n === 1) drawCenterBox(4, active ? "7" : "5");
+        if(type === TileType.T1) drawCenterBox(4, active ? "7" : "5");
     }
 
     return d();
@@ -100,14 +111,6 @@ const rotateSpriteText = (sprite, deg) => {
         return Array.from({ length: s.length }, (_, i) =>
             Array.from({ length: s.length }, (_, j) => s[s.length - j - 1][i]).join("")
         ).join("\n");
-        // return sprite
-        //     .split("\n")
-        //     .map((l, y) => l
-        //         .split("")
-        //         .map((c, x) => sprite.split("\n")[x][y])
-        //         .reverse()
-        //         .join("")
-        //     ).join("\n");
     };
     for(let i = 0; i < deg / 90; i++) {
         sprite = rotate90(sprite);
@@ -117,52 +120,59 @@ const rotateSpriteText = (sprite, deg) => {
 
 const legend = [];
 const chars = new Map();
-const getChar = (n, active, deg = 0) => {
-    const key = `${n},${active},${deg}`;
+const getChar = (type: TileType, active, deg = 0) => {
+    const key = `${type},${active},${deg}`;
     if(chars.has(key)) return chars.get(key);
-    const sprite = rotateSpriteText(makeSprite(n, active), deg);
+    const sprite = rotateSpriteText(makeSprite(type, active), deg);
     const char = String.fromCharCode(legend.length + "A".charCodeAt(0));
     chars.set(key, char);
     legend.push([char, sprite]);
     setLegend(...legend);
     return char;
 }
-/*
-const setTimes = (s, t) => s.flatMap(sE => t.map(tE => [sE, tE]));
-const getChar = (n, active) => String.fromCharCode(((n - 1) * 2) + active + "A".charCodeAt(0));
-const legend = setTimes([1, 2, 3, 4], [false, true])
-    .map(a => makeSprite(...a))
-    .reduce((acc, cur, idx) => [...acc,
-        [String.fromCharCode(idx + "A".charCodeAt(0)), cur]
-    ], []);
-console.log(legend);
-setLegend(...legend);*/
-
-// setLegend(['a', makeSprite(1, false)]);
 
 /*
-const player = "p";
+ * Docs from puzzle code:
+ * My syntax is extremely simple: each square is encoded as a
+ * hex digit in which bit 0 means a connection on the right,
+ * bit 1 means up, bit 2 left and bit 3 down. (i.e. the same
+ * encoding as used internally). Each digit is followed by
+ * optional barrier indicators: `v' means a vertical barrier to
+ * the right of it, and `h' means a horizontal barrier below
+ * it.
+ */
 
-setLegend(
-    [ player, bitmap`
-................
-................
-................
-....555555555...
-....555555555...
-....555555555...
-....555555555...
-....555555555...
-....555555555...
-....555555555...
-....555555555...
-....555555555...
-....555555555...
-................
-................
-................`
-    ]
-);*/
+const decodeGameDesc = (desc: string): string => {
+    // we aren't using barriers right now so won't implement that part of the spec
+    const squares = desc.split("").map(c => {
+        const n = Number("0x" + c);
+        const a = [0b0001, 0b1000, 0b0100, 0b0010].map(m => (n & m) !== 0);
+        const count = a.reduce((acc, cur) => acc + Number(cur), 0);
+        const [right, down, left, up] = a;
+        const type = count === 1 ? TileType.T1
+            : count === 2 ? (right || left ? TileType.T2S : TileType.T2L)
+            : count === 3 ? TileType.T3
+            : TileType.T4;
+
+        let deg;
+        if(type === TileType.T1) {
+            deg = a.findIndex(v => v) * 90;
+        } else if(type === TileType.T2L) {
+            // deg = a.findIndex(v => v) * 90;
+            // doesn't work, because 0 and 270 would both be 0
+
+        } else if(type === TileType.T2S) {
+            deg = a.findIndex(v => v) * 90;
+        } else if(type === TileType.T3) {
+
+        }
+
+        // const deg = (right ? 0 : 0) + (up ? 90 : 0) + (left ? 180 : 0) + (down ? 270 : 0);
+    });
+    const gridDim = Math.sqrt(desc.length);
+}
+
+
 
 setSolids([]);
 
@@ -178,15 +188,3 @@ ${getChar(2, true, 180)}${getChar(2, true, 270)}
 
 setMap(levels[level]);
 
-/*setPushables({
-    [ player ]: [],
-});
-
-onInput("s", () => {
-    getFirst(player).y += 1
-});
-
-afterInput(() => {
-
-});
-*/

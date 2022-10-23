@@ -1,7 +1,7 @@
 import { terser } from "rollup-plugin-terser";
 
 export default {
-    input: "index.js",
+    input: "index.ts",
     output: [
         {
             file: "build/bundle.js",

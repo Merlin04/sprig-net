@@ -1,0 +1,16 @@
+<toolSet name="External Tools">
+  <tool name="Yarn build" showInMainMenu="false" showInEditor="false" showInProject="false" showInSearchPopup="false" disabled="false" useConsole="true" showConsoleOnStdOut="false" showConsoleOnStdErr="false" synchronizeAfterRun="true">
+    <exec>
+      <option name="COMMAND" value="/usr/local/bin/yarn" />
+      <option name="PARAMETERS" value="build" />
+      <option name="WORKING_DIRECTORY" value="js" />
+    </exec>
+  </tool>
+  <tool name="make" showInMainMenu="false" showInEditor="false" showInProject="false" showInSearchPopup="false" disabled="false" useConsole="true" showConsoleOnStdOut="false" showConsoleOnStdErr="false" synchronizeAfterRun="true">
+    <exec>
+      <option name="COMMAND" value="/usr/bin/make" />
+      <option name="PARAMETERS" value="build" />
+      <option name="WORKING_DIRECTORY" value="." />
+    </exec>
+  </tool>
+</toolSet>
